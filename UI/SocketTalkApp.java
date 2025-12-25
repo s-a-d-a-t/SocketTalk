@@ -74,9 +74,10 @@ public class SocketTalkApp extends Application {
             registerController = loader.getController();
             registerController.setApp(this);
             
-            Scene scene = new Scene(root, 400, 550);
+            Scene scene = new Scene(root, 950, 700);
             scene.getStylesheets().add(getClass().getResource("/UI/CSS/style.css").toExternalForm());
             primaryStage.setScene(scene);
+            primaryStage.centerOnScreen();
         } catch (IOException e) {
             e.printStackTrace();
         }
