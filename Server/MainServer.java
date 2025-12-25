@@ -1,67 +1,158 @@
-
+package Server;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Set;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MainServer {
-    private static final Set<ClientKeyPair> clients = ConcurrentHashMap.newKeySet();
-    private static class ClientKeyPair {
-        private String key; // basically the client ID
-        private ClientHandler client; 
+    private static final int PORT = 5555;
+    private static final Map<String, ClientHandler> activeClients = new ConcurrentHashMap<>();
+    private static final UserManager userManager = new UserManager();
+    private static final HistoryManager historyManager = new HistoryManager();
 
-        public ClientKeyPair(String key, ClientHandler client) {
-            this.key = key;
-            this.client = client;
+    public static void main(String[] args) {
+        System.out.println("Server started on port " + PORT);
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            while (true) {
+                Socket socket = serverSocket.accept();
+                System.out.println("New connection: " + socket);
+                new Thread(new ClientHandler(socket)).start();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-
-        public String getKey() {
-            return key;
-        }
-
-        public ClientHandler getClient() {
-            return client;
-        }
-
     }
-    private static class ClientHandler implements Runnable {
 
+    static class ClientHandler implements Runnable {
         private final Socket socket;
         private DataInputStream in;
         private DataOutputStream out;
+        private String userId;
 
-        ClientHandler(Socket socket) {
+        public ClientHandler(Socket socket) {
             this.socket = socket;
-            try {
-                in = new DataInputStream(socket.getInputStream());
-                out = new DataOutputStream(socket.getOutputStream());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
 
         @Override
         public void run() {
             try {
-                while (true) {
-                    String message = in.readUTF();
-                    System.out.println("Received: " + message);
+                in = new DataInputStream(socket.getInputStream());
+                out = new DataOutputStream(socket.getOutputStream());
 
-                    MainServer.broadcast(message, this);
+                while (true) {
+                    String req = in.readUTF();
+                    System.out.println("Received: " + req);
+                    handleRequest(req);
                 }
             } catch (IOException e) {
+                // Client disconnected
             } finally {
                 close();
             }
         }
 
-        void send(String message) {
+        private void handleRequest(String req) throws IOException {
+            String[] parts = req.split("\\|");
+            String command = parts[0];
+
+            switch (command) {
+                case "LOGIN":
+                    handleLogin(parts);
+                    break;
+                case "REGISTER":
+                    handleRegister(parts);
+                    break;
+                case "MSG_PRIVATE":
+                    handlePrivateMessage(parts);
+                    break;
+                case "GET_USERS":
+                    handleGetUsers();
+                    break;
+                case "GET_HISTORY":
+                    handleGetHistory(parts);
+                    break;
+                default:
+                    // send("ERROR|Unknown command");
+            }
+        }
+
+        private void handleLogin(String[] parts) throws IOException {
+            // LOGIN|ID|PASSWORD
+            if (parts.length < 3) return;
+            String id = parts[1];
+            String pass = parts[2];
+
+            User user = userManager.login(id, pass);
+            if (user != null) {
+                this.userId = id;
+                activeClients.put(id, this);
+                send("LOGIN_SUCCESS|" + user.getName() + "|" + user.getRole());
+                System.out.println("User logged in: " + user.getName());
+            } else {
+                send("LOGIN_FAIL|Invalid credentials");
+            }
+        }
+
+        private void handleRegister(String[] parts) throws IOException {
+            // REGISTER|ID|NAME|PASS|ROLE
+            if (parts.length < 5) return;
+            String id = parts[1];
+            String name = parts[2];
+            String pass = parts[3];
+            String role = parts[4];
+
+            boolean success = userManager.register(id, name, pass, role);
+            if (success) {
+                send("REGISTER_SUCCESS");
+            } else {
+                send("REGISTER_FAIL|User ID already exists");
+            }
+        }
+
+        private void handlePrivateMessage(String[] parts) throws IOException {
+            // MSG_PRIVATE|TARGET_ID|MESSAGE
+            if (parts.length < 3) return;
+            String targetId = parts[1];
+            String msg = parts[2];
+
+            historyManager.savePrivateMessage(this.userId, targetId, msg);
+
+            ClientHandler target = activeClients.get(targetId);
+            if (target != null) {
+                target.send("MSG_PRIVATE|" + this.userId + "|" + msg);
+            }
+            // Send acknowledgement to sender (optional, can be handled by UI optimistically)
+        }
+
+        private void handleGetUsers() throws IOException {
+             StringBuilder sb = new StringBuilder("USER_LIST");
+             for (User u : userManager.getAllUsers().values()) {
+                 // Don't send self in the list
+                 if (!u.getId().equals(this.userId)) {
+                      sb.append("|").append(u.getId()).append(":").append(u.getName()).append(":").append(u.getRole());
+                 }
+             }
+             send(sb.toString());
+        }
+
+        private void handleGetHistory(String[] parts) throws IOException {
+            // GET_HISTORY|TARGET_ID
+            if (parts.length < 2) return;
+            String targetId = parts[1];
+            List<String> history = historyManager.getPrivateHistory(this.userId, targetId);
+            for(String line : history) {
+                send("MSG_HISTORY|" + targetId + "|" + line);
+            }
+        }
+
+        public void send(String msg) {
             try {
-                out.writeUTF(message.substring(6));
+                out.writeUTF(msg);
                 out.flush();
             } catch (IOException e) {
                 close();
@@ -70,72 +161,12 @@ public class MainServer {
 
         private void close() {
             try {
-                MainServer.remove(this);
+                if (userId != null) {
+                    activeClients.remove(userId);
+                    System.out.println("User removed: " + userId);
+                }
                 socket.close();
             } catch (IOException ignored) {}
         }
     }
-
-    public static void main(String[] args) {
-
-        try (ServerSocket serverSocket = new ServerSocket(5555)) {
-
-            while (true) {
-                Socket socket = serverSocket.accept();
-                System.out.println("Client connected: " + socket);
-
-                DataInputStream din = new DataInputStream(socket.getInputStream());
-                String clientId = din.readUTF();
-                
-                ClientHandler handler = new ClientHandler(socket);
-                clients.add(new ClientKeyPair(clientId, handler));
-
-                for(ClientKeyPair pair: clients){
-                    System.out.println( pair.getClient() + " " +pair.getKey());
-                }
-
-                new Thread(handler).start();
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-                //sendTo
-    static void broadcast(String message, ClientHandler sender) {
-            
-            for (ClientKeyPair pair : clients) {
-                System.out.println(pair.getClient() + " ... " + pair.getKey() + " Sender ..." + sender);
-                if(pair.getClient() != sender){
-                    boolean foundKey = true;
-                    String id = pair.getKey();
-                    for(int i = 0; i<6; ++i){
-                        if(id.charAt(i) != message.charAt(i)){
-                            System.out.println(id.charAt(i) + "  " + message.charAt(i));
-                            foundKey = false;
-                            break;
-                        }
-                    }
-
-                    if(foundKey){
-                        System.out.println("Sending message");
-                        pair.getClient().send(message);
-                    }
-                }
-            
-        }
-
-
-    }
-
-    /*  if (client != sender) {
-                client.send(message);
-            } */
-
-    static void remove(ClientHandler handler) {
-        //clients.remove(handler);
-        System.out.println("Client disconnected");
-    }
-
-   
 }

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="900.0" styleClass="root" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="UI.Controllers.MainController">
+   <left>
+      <VBox prefWidth="260.0" spacing="10.0" style="-fx-background-color: -bg-panel; -fx-border-color: transparent white transparent transparent;" BorderPane.alignment="CENTER">
+         <children>
+             <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 15;">
+                 <Label style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: -primary-grad-end;" text="Chats" />
+                 <Region HBox.hgrow="ALWAYS" />
+                 <Button mnemonicParsing="false" onAction="#handleLogout" styleClass="button-secondary" style="-fx-font-size: 12px;" text="Logout" />
+             </HBox>
+            <HBox alignment="CENTER" style="-fx-padding: 0 10 0 10;">
+               <children>
+                  <TextField fx:id="searchField" promptText="Search users..." HBox.hgrow="ALWAYS" />
+               </children>
+            </HBox>
+            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="scroll-pane" VBox.vgrow="ALWAYS">
+               <content>
+                  <VBox fx:id="userListContainer" spacing="5.0" style="-fx-padding: 5;" />
+               </content>
+            </ScrollPane>
+         </children>
+      </VBox>
+   </left>
+   <center>
+      <BorderPane fx:id="chatArea" styleClass="chat-container" BorderPane.alignment="CENTER">
+         <top>
+            <HBox alignment="CENTER_LEFT" prefHeight="60.0" spacing="15.0" style="-fx-background-color: -bg-panel; -fx-padding: 10; -fx-border-color: transparent transparent white transparent;" BorderPane.alignment="CENTER">
+               <children>
+                  <Label fx:id="chatTitle" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: -text-main;" text="Select a conversation" />
+               </children>
+            </HBox>
+         </top>
+         <center>
+            <ScrollPane fx:id="chatScrollPane" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" styleClass="scroll-pane" BorderPane.alignment="CENTER">
+               <content>
+                  <VBox fx:id="messageContainer" spacing="10.0" style="-fx-padding: 20;" />
+               </content>
+            </ScrollPane>
+         </center>
+         <bottom>
+            <HBox alignment="CENTER" spacing="10.0" style="-fx-padding: 15; -fx-background-color: -bg-panel;" BorderPane.alignment="CENTER">
+               <children>
+                  <TextField fx:id="messageInput" onAction="#sendMessage" promptText="Type a message..." HBox.hgrow="ALWAYS" />
+                  <Button fx:id="sendButton" mnemonicParsing="false" onAction="#sendMessage" styleClass="button-primary" text="Send" />
+               </children>
+            </HBox>
+         </bottom>
+      </BorderPane>
+   </center>
+</BorderPane>

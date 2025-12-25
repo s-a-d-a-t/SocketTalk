@@ -1,0 +1,145 @@
+/* Modern Professional Color Palette */
+* {
+    -primary-color: #4f46e5;
+    /* Indigo-600 */
+    -primary-hover: #4338ca;
+    /* Indigo-700 */
+
+    -bg-main: #f9fafb;
+    /* Gray-50 */
+    -bg-card: #ffffff;
+
+    -text-header: #111827;
+    /* Gray-900 */
+    -text-body: #6b7280;
+    /* Gray-500 */
+
+    -input-border: #d1d5db;
+    -input-focus: #4f46e5;
+
+    /* Font Stack */
+    -fx-font-family: "Segoe UI", "Inter", "Helvetica Neue", sans-serif;
+}
+
+.root {
+    -fx-background-color: -bg-main;
+}
+
+/* Card Styling with "Cool Frame" Effect */
+.login-card-container {
+    /* No background here, just holding the two panels */
+}
+
+.info-panel {
+    -fx-background-color: linear-gradient(to bottom right, #e0e7ff, #c7d2fe);
+    /* Soft Indigo Gradient */
+    -fx-background-radius: 20;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.1), 20, 0, 0, 10);
+    /* Border/Frame effect */
+    -fx-border-color: white;
+    -fx-border-width: 5;
+    -fx-border-radius: 20;
+}
+
+.login-form-panel {
+    -fx-background-color: -bg-card;
+    -fx-background-radius: 20;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.15), 30, 0, 10, 10);
+    /* Deep shadow */
+}
+
+/* Typography */
+.header-label {
+    -fx-text-fill: -text-header;
+    -fx-font-size: 32px;
+    -fx-font-weight: 700;
+    /* Bold */
+}
+
+.sub-label {
+    -fx-text-fill: -text-body;
+    -fx-font-size: 16px;
+    -fx-font-weight: normal;
+}
+
+.field-label {
+    -fx-text-fill: #374151;
+    /* Gray-700 */
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    /* Semi-bold */
+}
+
+/* Inputs */
+.text-field {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: -text-header;
+    -fx-background-radius: 8;
+    -fx-border-color: -input-border;
+    -fx-border-radius: 8;
+    -fx-border-width: 1.5;
+    -fx-padding: 12;
+    -fx-font-size: 14px;
+}
+
+.text-field:focused {
+    -fx-border-color: -primary-color;
+    -fx-background-color: #f5f3ff;
+    /* Very bright indigo tint */
+    -fx-effect: dropshadow(three-pass-box, rgba(79, 70, 229, 0.2), 8, 0, 0, 0);
+}
+
+/* Buttons */
+.button-primary {
+    -fx-background-color: -primary-color;
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
+    -fx-padding: 14 24;
+    -fx-font-size: 15px;
+    -fx-effect: dropshadow(three-pass-box, rgba(79, 70, 229, 0.4), 10, 0, 0, 5);
+}
+
+.button-primary:hover {
+    -fx-background-color: -primary-hover;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.button-secondary {
+    -fx-background-color: transparent;
+    -fx-text-fill: -primary-color;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+    -fx-font-size: 14px;
+}
+
+.button-secondary:hover {
+    -fx-underline: true;
+    -fx-text-fill: -primary-hover;
+}
+
+/* Chat Styles (Keeping existing but updated colors) */
+.list-cell:filled:selected {
+    -fx-background-color: #e0e7ff;
+    -fx-border-color: transparent transparent transparent -primary-color;
+    -fx-border-width: 0 0 0 4;
+}
+
+.bubble-sent {
+    -fx-background-color: -primary-color;
+    -fx-background-radius: 18 18 0 18;
+    -fx-padding: 12;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+}
+
+.bubble-recv {
+    -fx-background-color: white;
+    -fx-background-radius: 18 18 18 0;
+    -fx-padding: 12;
+    -fx-text-fill: -text-header;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 4, 0, 2, 2);
+    -fx-font-size: 14px;
+}
