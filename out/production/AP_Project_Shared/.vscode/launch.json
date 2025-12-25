@@ -1,0 +1,60 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "stringTesting",
+            "request": "launch",
+            "mainClass": "Ztests.stringTesting",
+            "projectName": "miniProject_8478b716"
+        },
+        {
+            "type": "java",
+            "name": "TextTesting",
+            "request": "launch",
+            "mainClass": "Ztests.TextTesting",
+            "projectName": "miniProject_8478b716",
+            "vmArgs": "--module-path \"C:/Program Files/JAVA/javafx-sdk-17.0.17/lib\" --add-modules javafx.controls,javafx.fxml"
+        },
+        {
+            "type": "java",
+            "name": "gridTesting",
+            "request": "launch",
+            "mainClass": "Ztests.gridTesting",
+            "projectName": "miniProject_8478b716",
+            "vmArgs": "--module-path \"C:/Program Files/JAVA/javafx-sdk-17.0.17/lib\" --add-modules javafx.controls,javafx.fxml"
+        },
+        {
+            "type": "java",
+            "name": "MainServer",
+            "request": "launch",
+            "mainClass": "Server.MainServer",
+            "projectName": "miniProject_8478b716"
+        },
+        {
+            "type": "java",
+            "name": "ClientTwoApp",
+            "request": "launch",
+            "mainClass": "UI.ClientTwoApp",
+            "projectName": "miniProject_8478b716",
+            "vmArgs": "--module-path \"C:/Program Files/JAVA/javafx-sdk-17.0.17/lib\" --add-modules javafx.controls,javafx.fxml"
+        },
+        {
+            "type": "java",
+            "name": "ClientOneApp",
+            "request": "launch",
+            "mainClass": "UI.ClientOneApp",
+            "projectName": "miniProject_8478b716",
+            "vmArgs": "--module-path \"C:/Program Files/JAVA/javafx-sdk-17.0.17/lib\" --add-modules javafx.controls,javafx.fxml"
+        },
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        }
+    ]
+}
