@@ -91,6 +91,8 @@ public class MainController {
                 String urole = info[2];
                 String status = info[3];
                 
+                if (uid.equals(myId)) continue; // Don't show myself in the list
+                
                 knownUsers.put(uid, uname);
                 userOnlineStatus.put(uid, status.equals("ONLINE"));
                 
@@ -126,11 +128,9 @@ public class MainController {
         
         VBox textBox = new VBox(2);
         Label nameLbl = new Label(uname);
-        nameLbl.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
-        Label roleLbl = new Label(urole);
-        roleLbl.setStyle("-fx-text-fill: -text-gray; -fx-font-size: 10px;");
+        nameLbl.setStyle("-fx-text-fill: -text-main; -fx-font-weight: 800; -fx-font-size: 14px;");
         
-        textBox.getChildren().addAll(nameLbl, roleLbl);
+        textBox.getChildren().addAll(nameLbl);
         
         // Notification badge (initially hidden)
         Label notifBadge = new Label("0");
@@ -145,10 +145,23 @@ public class MainController {
     }
 
     private void selectChat(String uid, String uname) {
+        if (uid == null || uid.equals(myId)) return; // Can't chat with self
+        if (uid.equals(currentChatTargetId)) return; // Already selected
+        
+        // Remove active style from previous
+        if (currentChatTargetId != null && userCells.containsKey(currentChatTargetId)) {
+            userCells.get(currentChatTargetId).setStyle("");
+        }
+        
         this.currentChatTargetId = uid;
         chatTitle.setText(uname);
         messageContainer.getChildren().clear();
         sendButton.setDisable(false);
+        
+        // Highlight active cell
+        if (userCells.containsKey(uid)) {
+            userCells.get(uid).setStyle("-fx-background-color: rgba(255, 255, 255, 0.1); -fx-background-radius: 8;");
+        }
         
         // Clear unread count for this user
         unreadCounts.put(uid, 0);

@@ -101,7 +101,7 @@ public class MainServer {
                 this.userId = id;
                 activeClients.put(id, this);
                 user.setOnline(true); // Set user online
-                send("LOGIN_SUCCESS|" + user.getName() + "|" + user.getRole());
+                send("LOGIN_SUCCESS|" + user.getId() + "|" + user.getName() + "|" + user.getRole());
                 System.out.println("User logged in: " + user.getName());
                 
                 // Broadcast to all clients that this user is now online
@@ -219,18 +219,24 @@ public class MainServer {
             }
         }
 
-        private void close() {
+        private synchronized void close() {
+            if (userId == null) {
+                try { socket.close(); } catch (IOException ignored) {}
+                return;
+            }
+            
+            String idToClose = userId;
+            userId = null; // Mark as closed early to prevent recursion
+            
+            activeClients.remove(idToClose);
+            User user = userManager.getUser(idToClose);
+            if (user != null) {
+                user.setOnline(false);
+                broadcastUserStatus(idToClose, false);
+            }
+            System.out.println("User removed: " + idToClose);
+            
             try {
-                if (userId != null) {
-                    activeClients.remove(userId);
-                    User user = userManager.getUser(userId);
-                    if (user != null) {
-                        user.setOnline(false); // Set user offline
-                        // Broadcast to all clients that this user is now offline
-                        broadcastUserStatus(userId, false);
-                    }
-                    System.out.println("User removed: " + userId);
-                }
                 socket.close();
             } catch (IOException ignored) {}
         }

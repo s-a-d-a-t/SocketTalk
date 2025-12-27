@@ -51,12 +51,12 @@ public class LoginController {
         if (app != null) app.showRegisterView();
     }
 
-    public void onLoginSuccess(String name, String role) {
+    public void onLoginSuccess(String id, String name, String role) {
         Platform.runLater(() -> {
             if ("ADMIN".equals(role)) {
-                app.showAdminView(idField.getText(), name);
+                app.showAdminView(id, name);
             } else {
-                app.showMainView(idField.getText(), name, role);
+                app.showMainView(id, name, role);
             }
         });
     }

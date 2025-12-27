@@ -133,9 +133,12 @@ public class SocketTalkApp extends Application {
         client.setListener((cmd, parts) -> {
             switch (cmd) {
                 case "LOGIN_SUCCESS":
-                    if (loginController != null) {
-                        // Assuming parts: LOGIN_SUCCESS|Name|Role
-                        loginController.onLoginSuccess(parts[1], parts[2]);
+                    System.out.println("Processing LOGIN_SUCCESS with parts length: " + parts.length);
+                    if (loginController != null && parts.length > 3) {
+                        // parts: LOGIN_SUCCESS|ID|Name|Role
+                        loginController.onLoginSuccess(parts[1], parts[2], parts[3]);
+                    } else if (loginController != null) {
+                        loginController.onLoginFail("Server protocol error: missing login fields");
                     }
                     break;
                 case "LOGIN_FAIL":
