@@ -75,4 +75,27 @@ public class HistoryManager {
         }
         return history;
     }
+    
+    // Get total message count for admin statistics
+    public int getTotalMessageCount() {
+        int count = 0;
+        File historyDir = new File(HISTORY_DIR);
+        if (historyDir.exists() && historyDir.isDirectory()) {
+            File[] files = historyDir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile() && file.getName().endsWith(".txt")) {
+                        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                            while (br.readLine() != null) {
+                                count++;
+                            }
+                        } catch (IOException e) {
+                            // Skip this file
+                        }
+                    }
+                }
+            }
+        }
+        return count;
+    }
 }

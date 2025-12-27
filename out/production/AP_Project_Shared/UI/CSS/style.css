@@ -143,3 +143,56 @@
     -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 4, 0, 2, 2);
     -fx-font-size: 14px;
 }
+
+/* User Status Indicators */
+.status-online {
+    -fx-fill: #10b981;
+    /* Green */
+}
+
+.status-offline {
+    -fx-fill: #6b7280;
+    /* Gray */
+}
+
+/* Notification Badge */
+.notification-badge {
+    -fx-background-color: #ef4444;
+    /* Red */
+    -fx-text-fill: white;
+    -fx-background-radius: 10;
+    -fx-min-width: 20;
+    -fx-min-height: 20;
+    -fx-max-width: 20;
+    -fx-max-height: 20;
+    -fx-alignment: center;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 2 6;
+}
+
+/* Admin Panel Styles */
+.admin-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.08), 10, 0, 0, 4);
+    -fx-padding: 20;
+}
+
+.stat-number {
+    -fx-font-size: 36px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -primary-color;
+}
+
+.stat-label {
+    -fx-font-size: 14px;
+    -fx-text-fill: -text-body;
+    -fx-font-weight: 500;
+}
+
+.admin-table {
+    -fx-background-color: white;
+    -fx-border-color: #e5e7eb;
+    -fx-border-radius: 8;
+}

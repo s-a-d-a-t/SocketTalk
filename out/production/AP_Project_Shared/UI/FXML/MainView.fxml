@@ -18,6 +18,7 @@
              <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 15;">
                  <Label style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: -primary-grad-end;" text="Chats" />
                  <Region HBox.hgrow="ALWAYS" />
+                 <Button fx:id="adminPanelBtn" mnemonicParsing="false" onAction="#handleAdminPanel" styleClass="button-secondary" style="-fx-font-size: 12px;" text="Admin Panel" visible="false" managed="false" />
                  <Button mnemonicParsing="false" onAction="#handleLogout" styleClass="button-secondary" style="-fx-font-size: 12px;" text="Logout" />
              </HBox>
             <HBox alignment="CENTER" style="-fx-padding: 0 10 0 10;">

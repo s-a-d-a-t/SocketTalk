@@ -91,8 +91,12 @@ public class MainServer {
             if (user != null) {
                 this.userId = id;
                 activeClients.put(id, this);
+                user.setOnline(true); // Set user online
                 send("LOGIN_SUCCESS|" + user.getName() + "|" + user.getRole());
                 System.out.println("User logged in: " + user.getName());
+                
+                // Broadcast to all clients that this user is now online
+                broadcastUserStatus(id, true);
             } else {
                 send("LOGIN_FAIL|Invalid credentials");
             }
@@ -134,7 +138,8 @@ public class MainServer {
              for (User u : userManager.getAllUsers().values()) {
                  // Don't send self in the list
                  if (!u.getId().equals(this.userId)) {
-                      sb.append("|").append(u.getId()).append(":").append(u.getName()).append(":").append(u.getRole());
+                      sb.append("|").append(u.getId()).append(":").append(u.getName())
+                        .append(":").append(u.getRole()).append(":").append(u.isOnline() ? "ONLINE" : "OFFLINE");
                  }
              }
              send(sb.toString());
@@ -148,6 +153,27 @@ public class MainServer {
             for(String line : history) {
                 send("MSG_HISTORY|" + targetId + "|" + line);
             }
+        }
+        
+        private void handleGetAdminStats() throws IOException {
+            // GET_ADMIN_STATS - return total users, online users, total messages
+            int totalUsers = userManager.getAllUsers().size();
+            int onlineUsers = (int) userManager.getAllUsers().values().stream()
+                    .filter(u -> u.isOnline())
+                    .count();
+            int totalMessages = historyManager.getTotalMessageCount();
+            
+            send("ADMIN_STATS|" + totalUsers + "|" + onlineUsers + "|" + totalMessages);
+        }
+        
+        private void handleGetAllUsersAdmin() throws IOException {
+            // GET_ALL_USERS_ADMIN - return all users including self
+            StringBuilder sb = new StringBuilder("ALL_USERS");
+            for (User u : userManager.getAllUsers().values()) {
+                sb.append("|").append(u.getId()).append(":").append(u.getName())
+                  .append(":").append(u.getRole()).append(":").append(u.isOnline() ? "ONLINE" : "OFFLINE");
+            }
+            send(sb.toString());
         }
 
         public void send(String msg) {
@@ -163,10 +189,24 @@ public class MainServer {
             try {
                 if (userId != null) {
                     activeClients.remove(userId);
+                    User user = userManager.getUser(userId);
+                    if (user != null) {
+                        user.setOnline(false); // Set user offline
+                        // Broadcast to all clients that this user is now offline
+                        broadcastUserStatus(userId, false);
+                    }
                     System.out.println("User removed: " + userId);
                 }
                 socket.close();
             } catch (IOException ignored) {}
+        }
+        
+        // Broadcast user status to all connected clients
+        private void broadcastUserStatus(String userId, boolean isOnline) {
+            String statusMsg = "USER_STATUS|" + userId + "|" + (isOnline ? "ONLINE" : "OFFLINE");
+            for (ClientHandler client : activeClients.values()) {
+                client.send(statusMsg);
+            }
         }
     }
 }

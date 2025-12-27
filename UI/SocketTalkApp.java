@@ -21,6 +21,7 @@ public class SocketTalkApp extends Application {
     private LoginController loginController;
     private RegisterController registerController;
     private MainController mainController;
+    private UI.Controllers.AdminController adminController;
 
     private static final String CSS_PATH = "/UI/CSS/style.css"; // Resource path might need adjustment depending on build
 
@@ -57,9 +58,10 @@ public class SocketTalkApp extends Application {
             registerController = null;
             mainController = null;
             
-            Scene scene = new Scene(root, 950, 700); // Larger window for the new layout
+            Scene scene = new Scene(root, 900, 650); // Fixed optimized size
             scene.getStylesheets().add(getClass().getResource("/UI/CSS/style.css").toExternalForm());
             primaryStage.setScene(scene);
+            primaryStage.setResizable(false); // Fixed size window
             primaryStage.centerOnScreen();
         } catch (IOException e) {
             e.printStackTrace();
@@ -74,9 +76,10 @@ public class SocketTalkApp extends Application {
             registerController = loader.getController();
             registerController.setApp(this);
             
-            Scene scene = new Scene(root, 950, 700);
+            Scene scene = new Scene(root, 900, 650); // Fixed optimized size
             scene.getStylesheets().add(getClass().getResource("/UI/CSS/style.css").toExternalForm());
             primaryStage.setScene(scene);
+            primaryStage.setResizable(false); // Fixed size window
             primaryStage.centerOnScreen();
         } catch (IOException e) {
             e.printStackTrace();
@@ -91,9 +94,34 @@ public class SocketTalkApp extends Application {
             mainController = loader.getController();
             mainController.setApp(this, myId, myName, myRole);
             
-            Scene scene = new Scene(root, 900, 600);
+            // Reset admin controller
+            adminController = null;
+            
+            Scene scene = new Scene(root, 1000, 650);
             scene.getStylesheets().add(getClass().getResource("/UI/CSS/style.css").toExternalForm());
             primaryStage.setScene(scene);
+            primaryStage.setResizable(true); // Allow resizing for main chat view
+            primaryStage.centerOnScreen();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public void showAdminView(String myId, String myName) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/UI/FXML/AdminView.fxml"));
+            Parent root = loader.load();
+            
+            adminController = loader.getController();
+            adminController.setApp(this, myId, myName);
+            
+            // Reset main controller
+            mainController = null;
+            
+            Scene scene = new Scene(root, 1000, 650);
+            scene.getStylesheets().add(getClass().getResource("/UI/CSS/style.css").toExternalForm());
+            primaryStage.setScene(scene);
+            primaryStage.setResizable(true);
             primaryStage.centerOnScreen();
         } catch (IOException e) {
             e.printStackTrace();
@@ -129,6 +157,12 @@ public class SocketTalkApp extends Application {
                         mainController.updateUserList(parts);
                     }
                     break;
+                case "USER_STATUS":
+                    if (mainController != null && parts.length > 2) {
+                        // USER_STATUS|userId|ONLINE/OFFLINE
+                        mainController.updateUserStatus(parts[1], parts[2].equals("ONLINE"));
+                    }
+                    break;
                 case "MSG_PRIVATE":
                     if (mainController != null) {
                         mainController.onMessageReceived(parts[1], parts[2]);
@@ -137,6 +171,20 @@ public class SocketTalkApp extends Application {
                 case "MSG_HISTORY":
                     if (mainController != null) {
                         mainController.onHistoryItem(parts[1], parts[2]);
+                    }
+                    break;
+                case "ADMIN_STATS":
+                    if (adminController != null && parts.length > 3) {
+                        // ADMIN_STATS|totalUsers|onlineUsers|totalMessages
+                        int totalUsers = Integer.parseInt(parts[1]);
+                        int onlineUsers = Integer.parseInt(parts[2]);
+                        int totalMessages = Integer.parseInt(parts[3]);
+                        adminController.updateStatistics(totalUsers, onlineUsers, totalMessages);
+                    }
+                    break;
+                case "ALL_USERS":
+                    if (adminController != null) {
+                        adminController.updateAllUsers(parts);
                     }
                     break;
             }
