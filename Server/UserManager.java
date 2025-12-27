@@ -68,6 +68,15 @@ public class UserManager {
         return users.get(id);
     }
     
+    public synchronized boolean deleteUser(String id) {
+        if (users.containsKey(id)) {
+            users.remove(id);
+            saveUsers();
+            return true;
+        }
+        return false;
+    }
+
     public Map<String, User> getAllUsers() {
         return users;
     }

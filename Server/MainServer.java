@@ -76,6 +76,15 @@ public class MainServer {
                 case "GET_HISTORY":
                     handleGetHistory(parts);
                     break;
+                case "GET_ALL_USERS_ADMIN":
+                    handleGetAllUsersAdmin();
+                    break;
+                case "GET_ADMIN_STATS":
+                    handleGetAdminStats();
+                    break;
+                case "DELETE_USER":
+                    handleDeleteUser(parts);
+                    break;
                 default:
                     // send("ERROR|Unknown command");
             }
@@ -158,9 +167,7 @@ public class MainServer {
         private void handleGetAdminStats() throws IOException {
             // GET_ADMIN_STATS - return total users, online users, total messages
             int totalUsers = userManager.getAllUsers().size();
-            int onlineUsers = (int) userManager.getAllUsers().values().stream()
-                    .filter(u -> u.isOnline())
-                    .count();
+            int onlineUsers = activeClients.size();
             int totalMessages = historyManager.getTotalMessageCount();
             
             send("ADMIN_STATS|" + totalUsers + "|" + onlineUsers + "|" + totalMessages);
@@ -170,10 +177,37 @@ public class MainServer {
             // GET_ALL_USERS_ADMIN - return all users including self
             StringBuilder sb = new StringBuilder("ALL_USERS");
             for (User u : userManager.getAllUsers().values()) {
+                if ("ADMIN".equals(u.getRole())) continue; // Admins can't see or delete other admins
                 sb.append("|").append(u.getId()).append(":").append(u.getName())
                   .append(":").append(u.getRole()).append(":").append(u.isOnline() ? "ONLINE" : "OFFLINE");
             }
             send(sb.toString());
+        }
+
+        private void handleDeleteUser(String[] parts) throws IOException {
+            // DELETE_USER|ID
+            if (parts.length < 2) return;
+            String targetId = parts[1];
+
+            // 1. Remove from UserManager (file/memory)
+            boolean success = userManager.deleteUser(targetId);
+            
+            if (success) {
+                // 2. If online, disconnect them
+                ClientHandler target = activeClients.get(targetId);
+                if (target != null) {
+                    target.send("ACCOUNT_DELETED|Your account has been removed by an admin.");
+                    target.close();
+                }
+                
+                send("DELETE_SUCCESS|" + targetId);
+                System.out.println("Admin deleted user: " + targetId);
+                
+                // 3. Broadcast status update
+                broadcastUserStatus(targetId, false);
+            } else {
+                send("DELETE_FAIL|User not found");
+            }
         }
 
         public void send(String msg) {

@@ -5,6 +5,7 @@ import UI.Controllers.LoginController;
 import UI.Controllers.MainController;
 import UI.Controllers.RegisterController;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -186,6 +187,18 @@ public class SocketTalkApp extends Application {
                     if (adminController != null) {
                         adminController.updateAllUsers(parts);
                     }
+                    break;
+                case "DELETE_SUCCESS":
+                    if (adminController != null) {
+                        adminController.handleRefresh();
+                    }
+                    break;
+                case "ACCOUNT_DELETED":
+                    // If the logged-in user's account was deleted by admin
+                    Platform.runLater(() -> {
+                        logout(); 
+                        // Show message if possible, or just redirect to login
+                    });
                     break;
             }
         });

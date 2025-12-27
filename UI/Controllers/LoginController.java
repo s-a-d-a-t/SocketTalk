@@ -53,7 +53,11 @@ public class LoginController {
 
     public void onLoginSuccess(String name, String role) {
         Platform.runLater(() -> {
-            app.showMainView(idField.getText(), name, role);
+            if ("ADMIN".equals(role)) {
+                app.showAdminView(idField.getText(), name);
+            } else {
+                app.showMainView(idField.getText(), name, role);
+            }
         });
     }
 

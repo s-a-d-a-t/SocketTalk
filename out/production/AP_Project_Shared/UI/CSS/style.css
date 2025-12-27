@@ -13,6 +13,16 @@
     /* Gray-900 */
     -text-body: #6b7280;
     /* Gray-500 */
+    -text-main: #1f2937;
+    /* Gray-800 */
+    -bg-panel: #f3f4f6;
+    /* Gray-100 */
+    -primary-grad-end: #4338ca;
+    /* Indigo-700 */
+    -text-gray: #9ca3af;
+    /* Gray-400 */
+    -error-color: #ef4444;
+    /* Red-500 */
 
     -input-border: #d1d5db;
     -input-focus: #4f46e5;
@@ -103,6 +113,25 @@
 
 .button-primary:hover {
     -fx-background-color: -primary-hover;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.button-danger {
+    -fx-background-color: #ef4444;
+    /* Red-500 */
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
+    -fx-padding: 14 24;
+    -fx-font-size: 15px;
+    -fx-effect: dropshadow(three-pass-box, rgba(239, 68, 68, 0.4), 10, 0, 0, 5);
+}
+
+.button-danger:hover {
+    -fx-background-color: #dc2626;
+    /* Red-600 */
     -fx-scale-x: 1.02;
     -fx-scale-y: 1.02;
 }

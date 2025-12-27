@@ -23,7 +23,7 @@
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                <children>
                   <Button fx:id="refreshBtn" mnemonicParsing="false" onAction="#handleRefresh" styleClass="button-primary" text="Refresh Data" />
-                  <Button fx:id="backBtn" mnemonicParsing="false" onAction="#handleBack" styleClass="button-secondary" text="Back to Chat" />
+                  <Button fx:id="logoutBtn" mnemonicParsing="false" onAction="#handleLogout" styleClass="button-secondary" text="Logout" />
                </children>
             </HBox>
          </children>
@@ -85,6 +85,7 @@
                               <TableColumn fx:id="nameColumn" prefWidth="200.0" text="Name" />
                               <TableColumn fx:id="roleColumn" prefWidth="150.0" text="Role" />
                               <TableColumn fx:id="statusColumn" prefWidth="150.0" text="Status" />
+                              <TableColumn fx:id="actionColumn" prefWidth="150.0" text="Actions" />
                            </columns>
                         </TableView>
                      </children>

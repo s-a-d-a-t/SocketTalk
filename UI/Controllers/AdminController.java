@@ -33,6 +33,7 @@ public class AdminController {
     @FXML private TableColumn<UserData, String> nameColumn;
     @FXML private TableColumn<UserData, String> roleColumn;
     @FXML private TableColumn<UserData, String> statusColumn;
+    @FXML private TableColumn<UserData, UserData> actionColumn;
 
     private ObservableList<UserData> userData = FXCollections.observableArrayList();
 
@@ -54,19 +55,60 @@ public class AdminController {
         roleColumn.setCellValueFactory(cellData -> cellData.getValue().roleProperty());
         statusColumn.setCellValueFactory(cellData -> cellData.getValue().statusProperty());
         
+        // Actions Column setup
+        actionColumn.setCellValueFactory(param -> new javafx.beans.property.SimpleObjectProperty<>(param.getValue()));
+        actionColumn.setCellFactory(param -> new javafx.scene.control.TableCell<UserData, UserData>() {
+            private final Button deleteBtn = new Button("Delete");
+
+            {
+                deleteBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-background-radius: 4; -fx-font-size: 11px; -fx-cursor: hand;");
+                deleteBtn.setOnAction(event -> {
+                    UserData data = getTableView().getItems().get(getIndex());
+                    handleDeleteUser(data);
+                });
+            }
+
+            @Override
+            protected void updateItem(UserData item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(deleteBtn);
+                }
+            }
+        });
+
         usersTable.setItems(userData);
     }
 
     @FXML
-    private void handleRefresh() {
+    public void handleRefresh() {
         requestAdminData();
     }
 
+    private void handleDeleteUser(UserData selected) {
+        if (selected == null) return;
+
+        // Show confirmation dialog
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Delete User");
+        alert.setHeaderText("Delete " + selected.getName() + " (ID: " + selected.getId() + ")?");
+        alert.setContentText("This will permanently remove the user and disconnect them if they are online.");
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == javafx.scene.control.ButtonType.OK) {
+                if (app != null && app.getClient() != null) {
+                    app.getClient().send("DELETE_USER|" + selected.getId());
+                }
+            }
+        });
+    }
+
     @FXML
-    private void handleBack() {
+    private void handleLogout() {
         if (app != null) {
-            // Go back to main chat view
-            app.showMainView(myId, myName, "TEACHER");
+            app.logout();
         }
     }
 
@@ -132,6 +174,14 @@ public class AdminController {
 
         public SimpleStringProperty statusProperty() {
             return status;
+        }
+
+        public String getId() {
+            return id.get();
+        }
+
+        public String getName() {
+            return name.get();
         }
     }
 }
