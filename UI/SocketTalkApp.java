@@ -172,6 +172,17 @@ public class SocketTalkApp extends Application {
                         mainController.onMessageReceived(parts[1], parts[2]);
                     }
                     break;
+                case "MSG_GROUP":
+                    if (mainController != null && parts.length > 3) {
+                         // MSG_GROUP|GROUP_ID|SENDER_ID|MESSAGE
+                         mainController.onGroupMessageReceived(parts[1], parts[2], parts[3]);
+                    }
+                    break;
+                case "GROUP_LIST":
+                     if (mainController != null) {
+                         mainController.updateGroupList(parts);
+                     }
+                     break;
                 case "MSG_HISTORY":
                     if (mainController != null) {
                         mainController.onHistoryItem(parts[1], parts[2]);

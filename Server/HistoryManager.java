@@ -98,4 +98,37 @@ public class HistoryManager {
         }
         return count;
     }
+
+    
+    // Get list of User IDs that the given user has a chat history with
+    public List<String> getContactsForUser(String userId) {
+        List<String> contacts = new ArrayList<>();
+        File historyDir = new File(HISTORY_DIR);
+        if (!historyDir.exists() || !historyDir.isDirectory()) {
+            return contacts;
+        }
+
+        File[] files = historyDir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                String name = file.getName();
+                if (name.startsWith("chat_") && name.endsWith(".txt")) {
+                    // Format: chat_ID1_ID2.txt
+                    String content = name.substring(5, name.length() - 4);
+                    String[] parts = content.split("_");
+                    if (parts.length == 2) {
+                        String id1 = parts[0];
+                        String id2 = parts[1];
+                        
+                        if (id1.equals(userId)) {
+                            if (!contacts.contains(id2)) contacts.add(id2);
+                        } else if (id2.equals(userId)) {
+                            if (!contacts.contains(id1)) contacts.add(id1);
+                        }
+                    }
+                }
+            }
+        }
+        return contacts;
+    }
 }

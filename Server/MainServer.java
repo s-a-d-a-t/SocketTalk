@@ -8,12 +8,15 @@ import java.net.Socket;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class MainServer {
     private static final int PORT = 5555;
     private static final Map<String, ClientHandler> activeClients = new ConcurrentHashMap<>();
     private static final UserManager userManager = new UserManager();
     private static final HistoryManager historyManager = new HistoryManager();
+    private static final GroupManager groupManager = new GroupManager();
 
     public static void main(String[] args) {
         System.out.println("Server started on port " + PORT);
@@ -85,6 +88,24 @@ public class MainServer {
                 case "DELETE_USER":
                     handleDeleteUser(parts);
                     break;
+                case "CREATE_GROUP":
+                    handleCreateGroup(parts);
+                    break;
+                case "ADD_TO_GROUP":
+                    handleAddToGroup(parts);
+                    break;
+                case "LEAVE_GROUP":
+                    handleLeaveGroup(parts);
+                    break;
+                case "START_CHAT":
+                    handleStartChat(parts);
+                    break;
+                case "MSG_GROUP":
+                    handleGroupMessage(parts);
+                    break;
+                case "GET_GROUPS":
+                    handleGetGroups();
+                    break;
                 default:
                     // send("ERROR|Unknown command");
             }
@@ -98,6 +119,15 @@ public class MainServer {
 
             User user = userManager.login(id, pass);
             if (user != null) {
+                // If this socket was already logged in as someone else, clean them up first
+                if (this.userId != null) {
+                    System.out.println("Switching user from " + this.userId + " to " + id);
+                    activeClients.remove(this.userId);
+                    User oldUser = userManager.getUser(this.userId);
+                    if (oldUser != null) oldUser.setOnline(false);
+                    broadcastUserStatus(this.userId, false);
+                }
+
                 this.userId = id;
                 activeClients.put(id, this);
                 user.setOnline(true); // Set user online
@@ -106,6 +136,12 @@ public class MainServer {
                 
                 // Broadcast to all clients that this user is now online
                 broadcastUserStatus(id, true);
+                
+                // Automaticaly send group list on login
+                handleGetGroups();
+                
+                // Send Contact List (Only filtered history)
+                sendContactList();
             } else {
                 send("LOGIN_FAIL|Invalid credentials");
             }
@@ -141,26 +177,209 @@ public class MainServer {
             }
             // Send acknowledgement to sender (optional, can be handled by UI optimistically)
         }
+        
+        private void handleCreateGroup(String[] parts) throws IOException {
+            // CREATE_GROUP|NAME|ID1,ID2,ID3...
+            if (parts.length < 3) return;
+            String name = parts[1];
+            String membersStr = parts[2];
+            
+            List<String> members = new ArrayList<>();
+            for (String m : membersStr.split(",")) {
+                members.add(m.trim());
+            }
+            
+            // Ensure creator is in the group
+            if (!members.contains(this.userId)) {
+                members.add(this.userId);
+            }
+            
+            Group g = groupManager.createGroup(name, members);
+            
+            // Notify all online members
+            for (String mid : members) {
+                ClientHandler ch = activeClients.get(mid);
+                if (ch != null) {
+                    // Send minimal info first or trigger a refresh
+                    ch.handleGetGroups(); 
+                }
+            }
+        }
+        
+        private void handleAddToGroup(String[] parts) throws IOException {
+            // ADD_TO_GROUP|GROUP_ID|NEW_MEMBER_ID
+            if (parts.length < 3) return;
+            String groupId = parts[1];
+            String newMemberId = parts[2].trim();
+            
+            Group g = groupManager.getGroup(groupId);
+            if (g == null) return; 
+            
+            if (!g.getMemberIds().contains(this.userId)) return;
+            
+            boolean added = groupManager.addMember(groupId, newMemberId);
+            
+            if (added) {
+                // ... success handling ...
+                String adderName = userManager.getUser(this.userId).getName();
+                String newMemberName = userManager.getUser(newMemberId).getName();
+                
+                String sysMsg = "System: " + adderName + " added " + newMemberName + " to the group.";
+                historyManager.saveGroupMessage(groupId, "SYSTEM", sysMsg);
+                
+                // Notify new member
+                ClientHandler newClient = activeClients.get(newMemberId);
+                if (newClient != null) newClient.handleGetGroups();
+
+                // Notify all members
+                for (String mid : g.getMemberIds()) {
+                    ClientHandler ch = activeClients.get(mid);
+                    if (ch != null) {
+                         ch.send("MSG_GROUP|" + groupId + "|SYSTEM|" + sysMsg);
+                    }
+                }
+            } else {
+                 // Member likely already exists
+                 send("MSG_PRIVATE|SYSTEM|User " + newMemberId + " is already in the group.");
+            }
+        }
+        
+        private void handleLeaveGroup(String[] parts) throws IOException {
+             // LEAVE_GROUP|GROUP_ID
+             if (parts.length < 2) return;
+             String groupId = parts[1];
+             
+             Group g = groupManager.getGroup(groupId);
+             if (g == null) return;
+             
+             boolean removed = groupManager.removeMember(groupId, this.userId);
+             if (removed) {
+                 // Notify group
+                 String leaverName = userManager.getUser(this.userId).getName();
+                 String sysMsg = "System: " + leaverName + " left the group.";
+                 historyManager.saveGroupMessage(groupId, "SYSTEM", sysMsg);
+                 
+                 for (String mid : g.getMemberIds()) {
+                     ClientHandler ch = activeClients.get(mid);
+                     if (ch != null) {
+                         ch.send("MSG_GROUP|" + groupId + "|SYSTEM|" + sysMsg);
+                     }
+                 }
+                 
+                 // Refresh leaver's list (User is removed from group file, so GetGroups won't show it)
+                 handleGetGroups();
+             }
+        }
+        
+        private void handleGroupMessage(String[] parts) throws IOException {
+            // MSG_GROUP|GROUP_ID|MESSAGE
+            if (parts.length < 3) return;
+            String groupId = parts[1];
+            String msg = parts[2];
+            
+            Group g = groupManager.getGroup(groupId);
+            if (g == null) return;
+            
+            historyManager.saveGroupMessage(groupId, this.userId, msg);
+            
+            // Distribute to all members of group
+            for (String memberId : g.getMemberIds()) {
+                // Don't echo back to sender if you handle persistence locally, 
+                // but typically socket apps echo or sender UI handles it. 
+                // Let's echo to everyone except sender if sender logic appends locally, 
+                // BUT sender needs to know it worked? 
+                // For simplicity: Send to ALL, client ignores self OR client appends self and ignores incoming self.
+                // We will send to everyone ELSE for now, sender handles optimistic UI.
+                if (!memberId.equals(this.userId)) {
+                    ClientHandler ch = activeClients.get(memberId);
+                    if (ch != null) {
+                        // MSG_GROUP|GROUP_ID|SENDER_ID|MESSAGE
+                        ch.send("MSG_GROUP|" + groupId + "|" + this.userId + "|" + msg);
+                    }
+                }
+            }
+        }
+        
+        private void sendContactList() {
+            List<String> contactIds = historyManager.getContactsForUser(this.userId);
+            StringBuilder sb = new StringBuilder("USER_LIST");
+            
+            for (String cid : contactIds) {
+                User u = userManager.getUser(cid);
+                if (u != null) {
+        sb.append("|").append(u.getId())
+          .append(":").append(u.getName())
+          .append(":").append(u.getRole())
+          .append(":").append(u.isOnline() ? "ONLINE" : "OFFLINE");
+                }
+            }
+            send(sb.toString());
+        }
+
+        private void handleStartChat(String[] parts) throws IOException {
+             // START_CHAT|TARGET_ID
+             if (parts.length < 2) return;
+             String targetId = parts[1].trim();
+             
+             User target = userManager.getUser(targetId);
+             if (target != null && !targetId.equals(this.userId)) {
+                 // 1. Send update to ME
+                 String myUpdate = "|"+ target.getId()+":"+target.getName()+":"+target.getRole()+":"+(target.isOnline()?"ONLINE":"OFFLINE");
+                 send("USER_LIST" + myUpdate); 
+                 
+                 // 2. Send update to TARGET (so I appear in their list)
+                 ClientHandler targetClient = activeClients.get(targetId);
+                 if (targetClient != null) {
+                     User me = userManager.getUser(this.userId);
+                     String targetUpdate = "|"+ me.getId()+":"+me.getName()+":"+me.getRole()+":"+(me.isOnline()?"ONLINE":"OFFLINE");
+                     targetClient.send("USER_LIST" + targetUpdate);
+                 }
+                 
+                 // 3. Create a starter history file
+                 historyManager.savePrivateMessage(this.userId, targetId, "Conversation started.");
+             } else {
+                 send("MSG_PRIVATE|SYSTEM|User ID not found.");
+             }
+        }
+
+        private void handleGetGroups() {
+            List<Group> myGroups = groupManager.getGroupsForUser(this.userId);
+            StringBuilder sb = new StringBuilder("GROUP_LIST");
+            for (Group g : myGroups) {
+                sb.append("|").append(g.getId()).append(":").append(g.getName());
+            }
+            send(sb.toString()); 
+        }
 
         private void handleGetUsers() throws IOException {
-             StringBuilder sb = new StringBuilder("USER_LIST");
-             for (User u : userManager.getAllUsers().values()) {
-                 // Don't send self in the list
-                 if (!u.getId().equals(this.userId)) {
-                      sb.append("|").append(u.getId()).append(":").append(u.getName())
-                        .append(":").append(u.getRole()).append(":").append(u.isOnline() ? "ONLINE" : "OFFLINE");
-                 }
-             }
-             send(sb.toString());
+             // Replaced global list with contact list
+             sendContactList();
         }
 
         private void handleGetHistory(String[] parts) throws IOException {
             // GET_HISTORY|TARGET_ID
+            // TARGET_ID could be a UserID or a GroupID.
+            // We need a way to distinguish. 
+            // Current system: Group UUIDs vs User custom IDs.
+            // Simple check: if groupManager has it, it's a group.
             if (parts.length < 2) return;
             String targetId = parts[1];
-            List<String> history = historyManager.getPrivateHistory(this.userId, targetId);
-            for(String line : history) {
-                send("MSG_HISTORY|" + targetId + "|" + line);
+            
+            Group g = groupManager.getGroup(targetId);
+            if (g != null) {
+                // Group History
+                 List<String> history = historyManager.getGroupHistory(targetId);
+                 for(String line : history) {
+                     // History Format: "senderId: message"
+                     // We send: MSG_HISTORY|GROUP_ID|senderId: message
+                     send("MSG_HISTORY|" + targetId + "|" + line);
+                 }
+            } else {
+                // Private History
+                List<String> history = historyManager.getPrivateHistory(this.userId, targetId);
+                for(String line : history) {
+                    send("MSG_HISTORY|" + targetId + "|" + line);
+                }
             }
         }
         

@@ -78,4 +78,29 @@ public class ChatClient {
     public void requestHistory(String targetId) {
         send("GET_HISTORY|" + targetId);
     }
+    
+    public void createGroup(String name, String memberIds) {
+        // memberIds is comma separated
+        send("CREATE_GROUP|" + name + "|" + memberIds);
+    }
+    
+    public void addGroupMember(String groupId, String newMemberId) {
+        send("ADD_TO_GROUP|" + groupId + "|" + newMemberId);
+    }
+    
+    public void leaveGroup(String groupId) {
+        send("LEAVE_GROUP|" + groupId);
+    }
+    
+    public void startConversation(String targetId) {
+        send("START_CHAT|" + targetId);
+    }
+    
+    public void sendGroupMessage(String groupId, String message) {
+        send("MSG_GROUP|" + groupId + "|" + message);
+    }
+    
+    public void requestGroups() {
+        send("GET_GROUPS");
+    }
 }

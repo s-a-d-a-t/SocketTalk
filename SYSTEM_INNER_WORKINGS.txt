@@ -1,0 +1,181 @@
+SYSTEM ARCHITECTURE AND INNER WORKINGS - COMPREHENSIVE GUIDE
+
+PART 1: HIGH-LEVEL ARCHITECTURE & DESIGN
+========================================
+
+1. SYSTEM OVERVIEW
+------------------
+The system is a real-time messaging application named "SocketTalk Campus Messenger". It follows a classic Client-Server architecture implemented in Java.
+- The Server acts as the central hub, managing user authentication, message routing, persistence, and presence monitoring.
+- The Client is a desktop application built with JavaFX, providing a graphical user interface (GUI) for users to interact with the system.
+- Communication is achieved via TCP Sockets using a custom text-based protocol with a pipe ('|') delimiter.
+
+2. SERVER-SIDE ARCHITECTURE
+---------------------------
+The server logic is contained within the `Server` package.
+
+2.1 MainServer (Server/MainServer.java)
+- Function: The entry point of the backend system.
+- Port: Listens on TCP port 5555.
+- Concurrency Model: Uses a Thread-per-Client model.
+  - The main loop blocks on `serverSocket.accept()`.
+  - Upon a new connection, it spawns a new `ClientHandler` thread.
+- State Management:
+  - `activeClients`: A `ConcurrentHashMap<String, ClientHandler>` that maps User IDs to their active socket handlers. This enables instant O(1) lookup for routing messages.
+- Static Components:
+  - Holds static references to `UserManager` and `HistoryManager` to be shared across all client threads.
+
+2.2 ClientHandler (Inner Class of MainServer)
+- Function: Handles the lifecycle of a single client connection.
+- I/O: Wraps the socket's InputStream and OutputStream in `DataInputStream` and `DataOutputStream` for reading/writing UTF-8 strings.
+- Request Processing:
+  - Continuously reads messages in a loop.
+  - Dispatches to specific handler methods (`handleLogin`, `handlePrivateMessage`, etc.) based on the command prefix.
+- Connection Management:
+  - Handles graceful disconnection in `close()`.
+  - Removes the user from `activeClients`.
+  - Updates other users of "OFFLINE" status via broadcast.
+
+2.3 UserManager (Server/UserManager.java)
+- Function: Manages user identity and authentication.
+- Data Structure: Loads users into a `HashMap<String, User>` in memory for fast access.
+- Persistence:
+  - File: `users.txt` in the root directory.
+  - Format: CSV-like lines: `ID,Name,Password,Role`.
+- Synchronization: Methods like `register`, `login`, and `deleteUser` are `synchronized` to prevent race conditions.
+
+2.4 HistoryManager (Server/HistoryManager.java)
+- Function: Manages persistent chat logs.
+- Storage Strategy:
+  - Directory: `history/`
+  - File Logic:
+    - Private Chats: `chat_MIN(id1,id2)_MAX(id1,id2).txt`. The IDs are sorted alphabetically to ensure a single file represents the conversation between two users regardless of who sent the message.
+    - Group Chats: `group_GROUPID.txt`.
+- Operations:
+  - Appends new messages to the end of the file.
+  - Reads the entire file line-by-line when history is requested.
+
+3. CLIENT-SIDE ARCHITECTURE
+---------------------------
+The client uses JavaFX for the UI and a background thread for network listening.
+
+3.1 ChatClient (Clients/ChatClient.java)
+- Function: The networking layer for the client.
+- Threading:
+  - Main JavaFX Application Thread: Handles UI updates.
+  - Listener Thread (`listen()`): A background thread that blocks on `in.readUTF()`.
+- Callback Mechanism:
+  - Defines a `MessageListener` interface.
+  - When a message arrives, it parses it and invokes `listener.onMessage()`.
+  - This decouples the network logic from the UI logic.
+
+3.2 UI Layer (UI Package)
+- Entry Point: `SocketTalkApp.java`. Manages the `primaryStage` and switches scenes.
+- Scenes:
+  - LoginView (`LoginController`): Authenticates user.
+  - RegisterView (`RegisterController`): Creates new accounts.
+  - MainView (`MainController`): The chat interface.
+  - AdminView (`AdminController`): Statistics and user management.
+
+4. COMMUNICATION PROTOCOL OVERVIEW
+----------------------------------
+Messages are strings delimited by `|`.
+
+4.1 Client -> Server Commands
+- AUTH: `LOGIN|ID|PASS`, `REGISTER|...`
+- MESSAGING: `MSG_PRIVATE|TARGET_ID|MESSAGE`
+- DATA: `GET_USERS`, `GET_HISTORY|TARGET`
+- ADMIN: `GET_ADMIN_STATS`, `DELETE_USER|ID`
+
+4.2 Server -> Client Responses
+- AUTH: `LOGIN_SUCCESS|...`, `LOGIN_FAIL|...`
+- EVENTS: `MSG_PRIVATE|...`, `USER_STATUS|...`
+- DATA: `USER_LIST|...`, `MSG_HISTORY|...`
+
+5. KEY WORKFLOWS (HIGH LEVEL)
+-----------------------------
+- Login: Authenticate against map -> Add to active clients -> Broadcast ONLINE status.
+- Messaging: Receive -> Save to File -> Route to recipient Socket if online.
+- Deletion: Remove from map -> Disconnect socket -> Broadcast removal.
+
+
+PART 2: GRANULAR TECHNICAL DEEP DIVE
+====================================
+
+6. PROTOCOL PARSING MECHANICS
+-----------------------------
+The system uses a rigid, position-based parsing strategy.
+
+6.1 The Delimiter ('|')
+- Why: The pipe character `|` is used as a separator because it is rare in normal text fields.
+- How parsing works:
+  - Incoming UTF-8 string: "LOGIN|alice|1234"
+  - Parsing Method: `req.split("\\|")`
+  - Regex Detail: The `\\` escape is strictly necessary because `|` is a regex special character (logical OR). `\\|` forces it to be treated as a literal character.
+  - Resulting Array: `["LOGIN", "alice", "1234"]`
+
+6.2 Command Dispatching
+- Source: In `MainServer.ClientHandler.handleRequest(String req)`.
+- Mechanism:
+  - `String[] parts = req.split("\\|")`;
+  - `String command = parts[0];`
+  - A `switch(command)` statement routes execution.
+- Parameter Access:
+  - Commands strictly access `parts[1]`, `parts[2]`, etc.
+  - If a packet is malformed (too few parts), the handler often silences the error (e.g., `if (parts.length < 3) return;`).
+
+7. ADVANCED CLIENT THREADING & EVENTS
+-------------------------------------
+
+7.1 The Network Listener Loop
+- The standard `java.net.Socket` input stream is blocking. Reading from it on the UI thread would freeze the application window.
+- Implementation:
+  - `ChatClient` spawns a dedicated Thread: `new Thread(this::listen).start()`.
+  - This thread sits in a `while(running)` loop blocked at `in.readUTF()`.
+  - When a packet arrives, it is read immediately.
+
+7.2 The MessageListener Interface Pattern
+- **Definition**: An interface `MessageListener` with method `void onMessage(String cmd, String... parts)`.
+- **Why**: To prevent `ChatClient` (Logic) from depending on `MainController` (UI).
+- **Control Flow**:
+  1. Socket Thread receives "MSG_PRIVATE|bob|Hi".
+  2. `ChatClient` calls `listener.onMessage("MSG_PRIVATE", parts)`.
+  3. `SocketTalkApp` implementation determines the app is in the "Main View".
+  4. `SocketTalkApp` delegates to `mainController.onMessageReceived()`.
+
+7.3 Bridging Threads with Platform.runLater
+- **Critial Constraint**: JavaFX is single-threaded. You CANNOT modify the DOM/Scene Graph (e.g., add a label, change color) from the Socket Thread.
+- **Solution**:
+  - Inside `MainController`, every UI update is wrapped:
+    ```java
+    Platform.runLater(() -> {
+        // This code runs safely on the UI thread in the next frame
+        messageContainer.getChildren().add(newBubble);
+    });
+    ```
+
+8. GRANULAR UI INTERACTION LOGIC
+--------------------------------
+
+8.1 Constructing the Contact List
+- Trigger: `USER_LIST` packet.
+- Visual Assembly (`createUserCell`):
+  - **Structure**: A customized `HBox` container.
+  - **Avatar Generation**: A `Label` with background color derived from `id.hashCode()`. This ensures the same user always has the same color without storing it in a database.
+  - **Status Indicator**: A `Circle` element.
+    - Green (`#10b981`) if payload says "ONLINE".
+    - Gray (`#6b7280`) if payload says "OFFLINE".
+  - **Data Tagging**: `cell.setUserData(uid)` attaches the raw User ID to the UI node, allowing retrieval when clicked.
+
+8.2 The "Select Contact" Event Chain
+- **User Action**: Click on a user's cell in the sidebar.
+- **Event Handler**: `selectChat(uid, uname)`
+- **Detailed Execution Sequence**:
+  1. **Validation**: Checks if you clicked yourself or the already selected user.
+  2. **Context Switch**: Sets `currentChatTargetId = uid`. This state variable determines the destination of your *next* sent message.
+  3. **Visual Highlighting**:
+     - Iterates previous cells to clear styling.
+     - Adds CSS class/style to the clicked cell (`rgba(255,255,255,0.1)`).
+  4. **Chat Area Reset**: Calls `messageContainer.getChildren().clear()` to wipe the previous conversation from the view.
+  5. **History Fetch**: Immediately sends `GET_HISTORY|targetId` to server.
+     - Asynchronous Result: The server will respond with a stream of `MSG_HISTORY` packets, which will populate the chat area one by one via the Listener loop described in 7.2.
