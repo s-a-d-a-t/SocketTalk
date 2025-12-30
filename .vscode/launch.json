@@ -6,6 +6,22 @@
     "configurations": [
         {
             "type": "java",
+            "name": "SocketTalkApp",
+            "request": "launch",
+            "mainClass": "UI.SocketTalkApp",
+            "projectName": "SocketTalk-main_3ce8f0cc",
+            "vmArgs": "--module-path \"C:/Program Files/JAVA/javafx-sdk-17.0.17/lib\" --add-modules javafx.controls,javafx.fxml"
+
+        },
+        {
+            "type": "java",
+            "name": "MainServer",
+            "request": "launch",
+            "mainClass": "Server.MainServer",
+            "projectName": "SocketTalk-main_3ce8f0cc"
+        },
+        {
+            "type": "java",
             "name": "stringTesting",
             "request": "launch",
             "mainClass": "Ztests.stringTesting",
